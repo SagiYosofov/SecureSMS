@@ -4,6 +4,8 @@ from e_c_d_h.diffie_hellman import EllipticCurveDiffieHellman
 from e_c_d_h.elliptic_curve import EllipticCurve, Point
 from ofb_mode import OFBMode
 from rabin_signature import RabinDigitalSignature
+from receiver import Receiver
+from sender import Sender
 
 BLOCK_SIZE = 16
 
@@ -21,65 +23,90 @@ def test_cryptographic_components():
 
     ecdh = EllipticCurveDiffieHellman(curve, base_point, p)
 
+    alice = Sender()
+    bob = Receiver()
+
     # Generate secret keys
-    alice_sk = ecdh.generate_secret_key()
-    bob_sk = ecdh.generate_secret_key()
-    print(f"Secret keys are {alice_sk}, {bob_sk}")
+    alice.diffie_hellman_sk = ecdh.generate_secret_key()
+    bob.diffie_hellman_sk = ecdh.generate_secret_key()
+    print(f"Secret keys are {alice.diffie_hellman_sk}, {bob.diffie_hellman_sk}")
 
     # Generate public keys
-    alice_pk = ecdh.compute_public_key(alice_sk)
-    bob_pk = ecdh.compute_public_key(bob_sk)
+    alice.diffie_hellman_pk = ecdh.compute_public_key(alice.diffie_hellman_sk)
+    bob.diffie_hellman_pk = ecdh.compute_public_key(bob.diffie_hellman_sk)
 
-    # Compute shared secrets
-    shared_secret_alice = ecdh.compute_shared_secret(alice_sk, bob_pk)
-    shared_secret_bob = ecdh.compute_shared_secret(bob_sk, alice_pk)
+    # Alice sends her public key to Bob
+    bob.sender_diffie_hellman_pk = alice.diffie_hellman_pk
+    # Bob sends her public key to Alice
+    alice.receiver_diffie_hellman_pk = bob.diffie_hellman_pk
 
-    print(f"Shared secret is {shared_secret_alice} == {shared_secret_bob}")
-    print(shared_secret_alice == shared_secret_bob)
+    # Compute shared secret keys
+    alice.shared_diffie_hellman_sk = ecdh.compute_shared_secret(alice.diffie_hellman_sk,
+                                                                alice.receiver_diffie_hellman_pk)
+    bob.shared_diffie_hellman_sk = ecdh.compute_shared_secret(bob.diffie_hellman_sk,
+                                                              bob.sender_diffie_hellman_pk)
 
-    # Extract usable integer from the x-coordinate
-    print(f"x_coordinate: {shared_secret_alice.x}")
-
-    # alice key for encrypting
-    # Extract usable integer from the x-coordinate
-    x_alice_int = int(shared_secret_alice.x)
-    # Convert to bytes and then to list of integers
-    x_alice_key_bytes = x_alice_int.to_bytes(BLOCK_SIZE, byteorder='big')
-    alice_final_key = list(x_alice_key_bytes)
-
-    # bob key for decrypting
-    # Extract usable integer from the x-coordinate
-    x_bob_int = int(shared_secret_bob.x)
-    # Convert to bytes and then to list of integers
-    x_bob_key_bytes = x_bob_int.to_bytes(BLOCK_SIZE, byteorder='big')
-    bob_final_key = list(x_bob_key_bytes)
-
+    # compute keys for encryption and decryption
+    alice.extract_final_encryption_key()
+    bob.extract_final_decryption_key()
 
     # Test FROG Encryption and Decryption
     print("\n--- FROG Encryption and Decryption Test ---")
 
     # Alice decides on a message to send to Bob
-    message = "Hi fella, how are you coping?"  # Original message
-    print("Original Message:", message)
+    alice.plaintext = input("Enter a message to send: ")
 
     # Alice encrypts the message and to sends to Bob
     ofb_mode_obj = OFBMode()
-    cipher_text = ofb_mode_obj.ofb_encrypt(message, alice_final_key)
-    print("Encrypted Message:", cipher_text)
+    alice.ciphertext = ofb_mode_obj.ofb_encrypt(alice.plaintext, alice.encryption_key)
+    print("Encrypted Message:", alice.ciphertext)
 
     # Alice creates digital signature and sends to Bob
-    rabin_signature = RabinDigitalSignature(512)
-    digital_signature = rabin_signature.get_signature(cipher_text)
+    rabin_signature = RabinDigitalSignature()
+    # Alice creates public key for digital signature
+    alice.digital_signature_sk_p, alice.digital_signature_sk_q = rabin_signature.generate_private_key()
+
+    # Alice create public key for digital signature
+    alice.compute_digital_signature_public_key()
+
+    # Alice send to Bob the public key for digital signature
+    bob.digital_signature_pk_n = alice.digital_signature_pk_n
+    bob.digital_signature_pk_b = alice.digital_signature_pk_b
+
+    digital_signature = rabin_signature.get_signature(msg=alice.ciphertext,
+                                                      n=alice.digital_signature_pk_n,
+                                                      b=alice.digital_signature_pk_b,
+                                                      p=alice.digital_signature_sk_p,
+                                                      q=alice.digital_signature_sk_q)
+    alice.digital_signature_u, alice.digital_signature_x = digital_signature
+
+    # Alice sends to Bob the cipher_text
+    bob.ciphertext = alice.ciphertext
+
+    # Alice sends to Bob the digital signature
+    bob.digital_signature_u = alice.digital_signature_u
+    bob.digital_signature_x = alice.digital_signature_x
 
     # Bob gets the messages from Alice and decrypts it.
-    # Decrypt the ciphertext
-    decrypted_cipher_text = ofb_mode_obj.ofb_decrypt(cipher_text, bob_final_key)
-    print("Decrypted Message:", decrypted_cipher_text)
-    print(message == decrypted_cipher_text)
+    bob.decrypted_ciphertext = ofb_mode_obj.ofb_decrypt(bob.ciphertext, bob.decryption_key)
+    print("Decrypted Message:", bob.decrypted_ciphertext)
+
+    if alice.plaintext == bob.decrypted_ciphertext:
+        print("Good decryption, the decrypted text is identical to the plaintext")
+    else:
+        print("Bad decryption, the decrypted text is NOT identical to the plaintext")
 
     # Bob gets from Alice the digital signature and verifies it.
-    print(f"is digital signature valid? {rabin_signature.verify_signature(cipher_text,digital_signature)}")
-
+    flag = rabin_signature.verify_signature(
+        msg=bob.ciphertext,
+        signature=(bob.digital_signature_u, bob.digital_signature_x),
+        n=bob.digital_signature_pk_n,
+        b=bob.digital_signature_pk_b
+    )
+    if not flag:
+        raise Exception("Invalid digital signature !!\nWe can't trust on this message.")
+    else:
+        print("This is a valid digital signature !!\nWe can trust on this message.")
 
 if __name__ == "__main__":
     test_cryptographic_components()

@@ -7,12 +7,12 @@ import random
 class RabinDigitalSignature:
     def __init__(self, bit_length=512):
         self.bit_length = bit_length
-        # private key
-        self.p, self.q = self.create_private_key()
-        # public key
-        self.n = self.p * self.q
-        self.b = random.randint(0, self.n - 1)
 
+        # # private key
+        # self.p, self.q = self.create_private_key()
+        # # public key
+        # self.n = self.p * self.q
+        # self.b = random.randint(0, self.n - 1)
 
     def generate_prime_mod_4_eq_3(self):
         """
@@ -35,7 +35,7 @@ class RabinDigitalSignature:
             if candidate % 4 == 3:
                 return candidate
 
-    def create_private_key(self):
+    def generate_private_key(self):
         p = self.generate_prime_mod_4_eq_3()
         q = self.generate_prime_mod_4_eq_3()
         while q == p:
@@ -43,40 +43,29 @@ class RabinDigitalSignature:
 
         return p, q
 
-    def get_private_key(self):
-        return self.p, self.q
-
-    def get_public_key(self):
-        return self.n, self.b
-
-    def get_signature(self, msg: str):
+    def get_signature(self, msg: str, n: int, b: int, p: int, q: int):
         k_bits = 60
         u: str = RabinDigitalSignature.get_random_string(k_bits)
         c: int = RabinDigitalSignature.get_hash_value(msg + u)
-        d = (self.b * RabinDigitalSignature.mod_inverse(2,self.n)) % self.n
+        d = (b * RabinDigitalSignature.mod_inverse(2, n)) % n
         c_plus_d_square = c + d * d
 
-        i=0
-        while not (RabinDigitalSignature.is_quadratic_residue(c_plus_d_square, self.p)
-                   and RabinDigitalSignature.is_quadratic_residue(c_plus_d_square, self.q)):
+        while not (RabinDigitalSignature.is_quadratic_residue(c_plus_d_square, p)
+                   and RabinDigitalSignature.is_quadratic_residue(c_plus_d_square, q)):
             u: str = RabinDigitalSignature.get_random_string(k_bits)
             c: int = RabinDigitalSignature.get_hash_value(msg + u)
             c_plus_d_square = c + d * d
 
-            i+=1
-            if i%100 == 0:
-                print(i)
+        sqrt_p = RabinDigitalSignature.square_root_mod_prime(c_plus_d_square, p)
+        sqrt_q = RabinDigitalSignature.square_root_mod_prime(c_plus_d_square, q)
 
-        sqrt_p = RabinDigitalSignature.square_root_mod_prime(c_plus_d_square, self.p)
-        sqrt_q = RabinDigitalSignature.square_root_mod_prime(c_plus_d_square, self.q)
-
-        x_p = (-d + sqrt_p) % self.p
-        x_q = (-d + sqrt_q) % self.q
+        x_p = (-d + sqrt_p) % p
+        x_q = (-d + sqrt_q) % q
 
         # Use Chinese Remainder Theorem to find x such that:
         # x ≡ x_p (mod p)
         # x ≡ x_q (mod q)
-        x = RabinDigitalSignature.chinese_remainder_theorem(x_p, self.p, x_q, self.q)
+        x = RabinDigitalSignature.chinese_remainder_theorem(x_p, p, x_q, q)
 
         # Return signature (u, x)
         return u, x
@@ -104,7 +93,7 @@ class RabinDigitalSignature:
 
         return t
 
-    def verify_signature(self, msg: str, signature):
+    def verify_signature(self, msg: str, signature: tuple, n, b):
         """
         Verify a Rabin signature
         """
@@ -113,9 +102,9 @@ class RabinDigitalSignature:
         # Recompute hash
         c = RabinDigitalSignature.get_hash_value(msg + u)
 
-        expected = c % self.n
+        expected = c % n
 
-        actual = x*(x + self.b) % self.n
+        actual = x * (x + b) % n
 
         return actual == expected
 
