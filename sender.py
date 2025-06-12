@@ -18,9 +18,15 @@ class Sender(Person):
         self.digital_signature_sk_q: Union[None, int] = None
 
     def extract_final_encryption_key(self):
+        """
+        from the shared diffie hellman secret key we use just x coordinates (an integer)
+        and convert it to list of bytes.
+        """
         self.encryption_key = super().extract_final_key()
 
     def compute_digital_signature_public_key(self):
+        """this function computes rabin digital signature public key based on
+        the private keu"""
         if self.digital_signature_sk_p is None or self.digital_signature_sk_q is None:
             raise Exception("digital signature's private key doesn't exist !!")
         self.digital_signature_pk_n = self.digital_signature_sk_p * self.digital_signature_sk_q

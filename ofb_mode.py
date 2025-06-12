@@ -1,6 +1,6 @@
 import base64
 
-from frog_encryption import makeKey, frogEncrypt
+from frog_encryption import make_key, frog_encrypt
 
 
 class OFBMode:
@@ -10,7 +10,7 @@ class OFBMode:
         self.block_size = 16  # 128-bit block size for FROG
         self.n = 7  # bits to shift left.
 
-    def shift_left_128bit(self, data_bytes):
+    def shift_left_128bit(self, data_bytes: bytes) -> bytes:
         """Performs a circular left bit rotation on 128-bit data."""
         if len(data_bytes) != 16:
             raise ValueError("Input must be 16 bytes (128 bits).")
@@ -24,16 +24,12 @@ class OFBMode:
         # Convert back to bytes
         return rotated.to_bytes(16, byteorder='big')
 
-    def ofb_encrypt(self, plaintext: str, key) -> str:
+    def ofb_encrypt(self, plaintext: str, key: list[int]) -> str:
         """
         Implement OFB mode encryption
-
-        Args:
-            plaintext: The text to encrypt
-            key: The encryption key (list of integers from 0–255)
-
-        Returns:
-            Ciphertext as a UTF-8 string (may not be safe if ciphertext contains non-text bytes)
+        :param plaintext: The text to encrypt
+        :param key: The encryption key (list of integers from 0–255)
+        :return: Ciphertext as a UTF-8 string (may not be safe if ciphertext contains non-text bytes)
         """
 
         # Convert plaintext to bytes
@@ -49,14 +45,14 @@ class OFBMode:
         shift_register = list(self.iv)  # Convert IV to list[int]
 
         # Create FROG encryption key schedule
-        frog_key = makeKey(key)  # key should already be list[int] of length 16
+        frog_key = make_key(key)  # key should already be list[int] of length 16
 
         # Process plaintext in blocks
         for i in range(0, len(plaintext), self.block_size):
             plaintext_block = list(plaintext[i:i + self.block_size])  # list[int]
 
             # Encrypt shift register to generate keystream block
-            key_stream_block = frogEncrypt(shift_register, frog_key.keyE)  # list[int]
+            key_stream_block = frog_encrypt(shift_register, frog_key.keyE)  # list[int]
 
             # XOR key stream with plaintext block
             ciphertext_block = [pt ^ ks for pt, ks in zip(plaintext_block, key_stream_block)]
@@ -67,16 +63,12 @@ class OFBMode:
 
         return base64.b64encode(cipher_bytes).decode('utf-8')  # return ciphertext as string
 
-    def ofb_decrypt(self, ciphertext: str, key) -> str:
+    def ofb_decrypt(self, ciphertext: str, key: list[int]) -> str:
         """
         Implement OFB mode decryption
-
-        Args:
-            ciphertext: The encrypted text (encoded using 'latin1')
-            key: The encryption key (list[int])
-
-        Returns:
-            Decrypted plaintext as a string
+        :param ciphertext: The encrypted text (encoded using 'latin1')
+        :param key: The encryption key (list[int])
+        :return: Decrypted plaintext as a string
         """
 
         # Decode ciphertext from 'latin1' to get the original bytes
@@ -86,14 +78,14 @@ class OFBMode:
         shift_register = list(self.iv)  # Convert IV to list[int]
 
         # Create FROG decryption key schedule
-        frog_key = makeKey(key)  # key should be list[int]
+        frog_key = make_key(key)  # key should be list[int]
 
         # Process each block
         for i in range(0, len(ciphertext), self.block_size):
             ciphertext_block = list(ciphertext[i:i + self.block_size])  # list[int]
 
             # Generate key stream block by encrypting the shift register (OFB uses encryption only)
-            key_stream_block = frogEncrypt(shift_register, frog_key.keyE)  # list[int]
+            key_stream_block = frog_encrypt(shift_register, frog_key.keyE)  # list[int]
 
             # XOR ciphertext block with key stream block to get plaintext block
             plaintext_block = [ct ^ ks for ct, ks in zip(ciphertext_block, key_stream_block)]

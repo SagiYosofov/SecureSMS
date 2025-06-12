@@ -5,21 +5,12 @@ import random
 
 
 class RabinDigitalSignature:
-    def __init__(self, bit_length=512):
+    def __init__(self, bit_length:int =512):
         self.bit_length = bit_length
 
-        # # private key
-        # self.p, self.q = self.create_private_key()
-        # # public key
-        # self.n = self.p * self.q
-        # self.b = random.randint(0, self.n - 1)
-
-    def generate_prime_mod_4_eq_3(self):
+    def generate_prime_mod_4_eq_3(self) -> int:
         """
         Generate a prime number of the given bit length that is congruent to 3 mod 4.
-
-        Parameters:
-            bit_length (int): Bit length of the prime number.
 
         Returns:
             int: A prime number p such that p ≡ 3 (mod 4).
@@ -35,7 +26,11 @@ class RabinDigitalSignature:
             if candidate % 4 == 3:
                 return candidate
 
-    def generate_private_key(self):
+    def generate_private_key(self) -> tuple:
+        """
+        Generate private key for rabin digital signature
+        :return: two different big primes (p,q) that congruent to 3mod4
+        """
         p = self.generate_prime_mod_4_eq_3()
         q = self.generate_prime_mod_4_eq_3()
         while q == p:
@@ -43,7 +38,16 @@ class RabinDigitalSignature:
 
         return p, q
 
-    def get_signature(self, msg: str, n: int, b: int, p: int, q: int):
+    def get_signature(self, msg: str, n: int, b: int, p: int, q: int) -> tuple:
+        """
+        Create rabin digital signature for a message using private key (p,q) and public key (n,b)
+        :param msg: the message to sign on
+        :param n: part of public key
+        :param b: part of public key
+        :param p: part of private key
+        :param q: part of private key
+        :return: u (random string of k bits size), x (int)
+        """
         k_bits = 60
         u: str = RabinDigitalSignature.get_random_string(k_bits)
         c: int = RabinDigitalSignature.get_hash_value(msg + u)
@@ -56,6 +60,7 @@ class RabinDigitalSignature:
             c: int = RabinDigitalSignature.get_hash_value(msg + u)
             c_plus_d_square = c + d * d
 
+        # compute square root mod prime
         sqrt_p = RabinDigitalSignature.square_root_mod_prime(c_plus_d_square, p)
         sqrt_q = RabinDigitalSignature.square_root_mod_prime(c_plus_d_square, q)
 
@@ -71,7 +76,7 @@ class RabinDigitalSignature:
         return u, x
 
     @staticmethod
-    def mod_inverse(a, n):
+    def mod_inverse(a: int, n: int) -> int:
         """
         Compute the modular inverse of a modulo n, i.e., find x such that (a * x) % n == 1.
         Uses the Extended Euclidean Algorithm.
@@ -93,9 +98,14 @@ class RabinDigitalSignature:
 
         return t
 
-    def verify_signature(self, msg: str, signature: tuple, n, b):
+    def verify_signature(self, msg: str, signature: tuple, n: int, b: int) -> bool:
         """
         Verify a Rabin signature
+        :param msg: the message use to verify the signature
+        :param signature: the digital signature to verify
+        :param n: part of public key
+        :param b: part of public key
+        :return:boolean
         """
         u, x = signature
 
@@ -109,7 +119,7 @@ class RabinDigitalSignature:
         return actual == expected
 
     @staticmethod
-    def is_quadratic_residue(a, p):
+    def is_quadratic_residue(a: int, p: int) -> bool:
         """
         Returns True if 'a' is a quadratic residue modulo prime 'p', else False.
         According to Euler's Criterion.
@@ -132,7 +142,7 @@ class RabinDigitalSignature:
         return legendre_symbol == 1
 
     @staticmethod
-    def get_random_string(size) -> str:
+    def get_random_string(size: int) -> str:
         res = ""
         for i in range(size):
             res += str((random.randint(0, 1)))
@@ -140,18 +150,23 @@ class RabinDigitalSignature:
 
     @staticmethod
     def get_hash_value(st: str) -> int:
+        """
+        Computes the SHA-256 hash of the input string and returns it as an integer.
+        :param st: The input string to hash.
+        :return: The hash value represented as a big-endian integer.
+        """
         return int.from_bytes(hashlib.sha256(st.encode()).digest(), 'big')
 
     @staticmethod
-    def square_root_mod_prime(a, p):
+    def square_root_mod_prime(a: int, p: int) -> int:
         """
         Compute square root of a modulo prime p
-        Assumes p ≡ 3 (mod 4) for simplicity
+        Assumes p ≡ 3 (mod 4)
         """
         return pow(a, (p + 1) // 4, p)
 
     @staticmethod
-    def chinese_remainder_theorem(a1, m1, a2, m2):
+    def chinese_remainder_theorem(a1: int, m1: int, a2: int, m2: int) -> int:
         """
         Solve the system of two congruences:
             x ≡ a1 (mod m1)
@@ -163,7 +178,7 @@ class RabinDigitalSignature:
             The smallest non-negative solution x modulo (m1 * m2)
         """
 
-        def extended_gcd(a, b):
+        def extended_gcd(a: int, b: int) -> tuple:
             """
             Extended Euclidean Algorithm.
             Returns (gcd, x, y) such that: a*x + b*y = gcd(a, b)

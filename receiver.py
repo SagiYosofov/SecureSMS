@@ -13,4 +13,8 @@ class Receiver(Person):
         self.decrypted_ciphertext: Union[None, str] = None
 
     def extract_final_decryption_key(self):
+        """
+        from the shared diffie hellman secret key we use just x coordinates (an integer)
+        and convert it to list of bytes.
+        """
         self.decryption_key = super().extract_final_key()

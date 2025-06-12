@@ -1,7 +1,9 @@
 from typing import Union
+
 from e_c_d_h.elliptic_curve import Point
 
 BLOCK_SIZE = 16
+
 
 class Person:
     def __init__(self):
