@@ -35,7 +35,7 @@ class ENCRYPTION(Enum):
 
 class FrogIterKey:
     """Represents a single round key (subkey) in FROG cipher,
-    holding three components: XOR mask, substitution permutation (S-box), and block permutation."""
+      holding three components: XOR mask, substitution permutation (S-box), and block permutation."""
     def __init__(self):
         """Initializes xorBu, SubstPermu, and BombPermu arrays with default values (zeroed out)."""
 
@@ -164,8 +164,7 @@ def make_internal_key(decrypting: ENCRYPTION, key_origin: list[FrogIterKey]) -> 
     :return: A list of processed FrogIterKey objects (length = NUM_ITERATIONS)
     '''
 
-    used = [
-               0] * BLOCK_SIZE  # A list used to track which positions are already used in a permutation cycle (size = block size).
+    used = [0] * BLOCK_SIZE  # A list used to track which positions are already used in a permutation cycle (size = block size).
     key = [FrogIterKey() for i in
            range(NUM_ITERATIONS)]  # New list of FrogIterKey objects that will hold the internal, processed key.
     k = 0
@@ -224,7 +223,8 @@ def make_internal_key(decrypting: ENCRYPTION, key_origin: list[FrogIterKey]) -> 
 def hash_key(raw_key: list[int]) -> list[FrogIterKey]:
     """
     The hashKey() function is a key expansion routine for the FROG cipher.
-    It transforms a raw user-provided key (binaryKey) into an internal key schedule that the FROG algorithm uses for encryption and decryption.    :param binaryKey: A list of integers (raw key bytes) of arbitrary length.
+    It transforms a raw user-provided key (binaryKey) into an internal key schedule that the FROG algorithm uses for encryption and decryption.
+    :param binaryKey: A list of integers (raw key bytes) of arbitrary length.
     :return: A list of FrogIterKey objects (internalKey) used to derive encryption and decryption subkeys.
     """
     buffer = [0] * BLOCK_SIZE

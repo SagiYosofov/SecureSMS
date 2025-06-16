@@ -24,7 +24,7 @@ def test_cryptographic_components():
 
     alice = Sender()
     bob = Receiver()
-    print("Alice wakes up and the morning and sends to Bob a message\n")
+    print("Alice wakes up in the morning and wants to send a message to Bob\n")
 
     print("Alice and Bob generate secret keys for key exchange")
     alice.diffie_hellman_sk = ecdh.generate_secret_key()
